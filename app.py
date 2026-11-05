@@ -10,7 +10,7 @@ import streamlit as st
 from simulation import Point, SimulationConfig, optimize_deliveries, run_simulation
 
 
-st.set_page_config(page_title="UAV Delivery Lab", page_icon="🚁", layout="wide")
+st.set_page_config(page_title="UAV Delivery Lab", page_icon="assets/shahed.png", layout="wide")
 st.markdown(
     """
     <style>
