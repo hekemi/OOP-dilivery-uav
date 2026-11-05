@@ -64,16 +64,8 @@ with st.sidebar:
     depot_y = st.number_input("Склад Y", 0, 9, 5)
 
 st.subheader("Оптимизация доставленных заказов")
-st.caption("Программа сама подберёт K, V и N в пределах заданных максимумов для фиксированного seed.")
-opt_left, opt_mid, opt_right, opt_button = st.columns([1, 1, 1, 1.15])
-with opt_left:
-    optimization_drones = st.number_input("Макс. дронов", 1, 20, int(drones), key="optimization_drones")
-with opt_mid:
-    optimization_speed = st.number_input("Макс. скорость", 1, 80, int(speed), key="optimization_speed")
-with opt_right:
-    optimization_capacity = st.number_input("Макс. вместимость", 1, 30, int(capacity), key="optimization_capacity")
-with opt_button:
-    run_optimization = st.button("🚀 Найти максимум", type="primary", use_container_width=True)
+st.caption("Программа сама подбирает K, V и N для фиксированного seed. Ограничения дальности, зарядки и экономика берутся из боковой панели.")
+run_optimization = st.button("🚀 Найти максимум", type="primary", use_container_width=False)
 
 config = SimulationConfig(
     seed=st.session_state.simulation_seed,
@@ -92,9 +84,6 @@ if run_optimization:
     with st.spinner("Перебираю конфигурации дронов..."):
         optimized_config, optimized_result = optimize_deliveries(
             config,
-            int(optimization_drones),
-            int(optimization_speed),
-            int(optimization_capacity),
         )
     st.session_state.optimized_config = optimized_config
     st.session_state.optimized_result = optimized_result
