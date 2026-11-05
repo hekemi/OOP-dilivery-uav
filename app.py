@@ -31,7 +31,7 @@ st.markdown(
 )
 
 st.markdown(
-    '<div class="hero"><h1>🚁 UAV Delivery Lab</h1><p>Имитационная модель доставки заказов в городской сети 10×10</p></div>',
+    '<div class="hero"><h1>UAV Delivery Lab</h1><p>Имитационная модель доставки заказов в городской сети 10×10</p></div>',
     unsafe_allow_html=True,
 )
 
