@@ -39,10 +39,17 @@ with st.sidebar:
     st.header("Параметры эксперимента")
     if "simulation_seed" not in st.session_state:
         st.session_state.simulation_seed = random.SystemRandom().randint(0, 2**32 - 1)
-    if st.button("Новая симуляция", use_container_width=True, type="primary"):
+    seed_col, seed_button_col = st.columns([1.35, 1])
+    with seed_col:
+        st.markdown(f"**Фиксированный seed**  \n`{st.session_state.simulation_seed}`")
+    with seed_button_col:
+        change_seed = st.button("Сменить seed", use_container_width=True, type="primary")
+    if change_seed:
         st.session_state.simulation_seed = random.SystemRandom().randint(0, 2**32 - 1)
+        st.session_state.pop("optimized_result", None)
+        st.session_state.pop("optimized_config", None)
         st.rerun()
-    st.caption("Нажмите кнопку, чтобы сгенерировать новый случайный сценарий заказов.")
+    st.caption("Один seed используется для всех проверяемых конфигураций.")
     drones = st.slider("Количество дронов K", 1, 20, 2)
     capacity = st.slider("Вместимость N, заказов", 1, 30, 5)
     speed = st.slider("Скорость, км/ч", 1, 80, 10)
@@ -57,7 +64,7 @@ with st.sidebar:
     depot_y = st.number_input("Склад Y", 0, 9, 5)
 
 st.subheader("Оптимизация доставленных заказов")
-st.caption("Поиск лучшей конфигурации за сутки по количеству доставленных заказов.")
+st.caption("Программа сама подберёт K, V и N в пределах заданных максимумов для фиксированного seed.")
 opt_left, opt_mid, opt_right, opt_button = st.columns([1, 1, 1, 1.15])
 with opt_left:
     optimization_drones = st.number_input("Макс. дронов", 1, 20, int(drones), key="optimization_drones")
@@ -92,28 +99,29 @@ if run_optimization:
     st.session_state.optimized_config = optimized_config
     st.session_state.optimized_result = optimized_result
 
+display_config = st.session_state.get("optimized_config", config)
+display_result = st.session_state.get("optimized_result", result)
 if "optimized_result" in st.session_state:
-    optimized_config = st.session_state.optimized_config
-    optimized_result = st.session_state.optimized_result
     st.success(
-        f"Лучший результат: **{optimized_result.delivered_count} из {optimized_result.generated_count} заказов**. "
-        f"Дроны: **{optimized_config.drones}**, скорость: **{optimized_config.speed_kmh:.0f} км/ч**, "
-        f"вместимость: **{optimized_config.capacity}**."
+        f"Лучший результат для seed `{display_config.seed}`: "
+        f"**{display_result.delivered_count} из {display_result.generated_count} заказов**. "
+        f"Подобраны: **{display_config.drones} дрон(а)**, "
+        f"**{display_config.speed_kmh:.0f} км/ч**, вместимость **{display_config.capacity}**."
     )
 
 metrics = st.columns(5)
-metrics[0].metric("Доставлено", f"{result.delivered_count}")
-metrics[0].caption(f"из {result.generated_count} сгенерированных заказов")
-metrics[1].metric("Процент доставки", f"{result.delivered_count / max(result.generated_count, 1):.1%}")
-metrics[2].metric("Пробег", f"{result.total_distance_km:.1f} км")
-metrics[3].metric("Прибыль", f"{result.total_profit:,.0f} ₽")
-metrics[4].metric("Загрузка флота", f"{result.utilization:.1%}")
+metrics[0].metric("Доставлено", f"{display_result.delivered_count}")
+metrics[0].caption(f"из {display_result.generated_count} сгенерированных заказов")
+metrics[1].metric("Процент доставки", f"{display_result.delivered_count / max(display_result.generated_count, 1):.1%}")
+metrics[2].metric("Пробег", f"{display_result.total_distance_km:.1f} км")
+metrics[3].metric("Прибыль", f"{display_result.total_profit:,.0f} ₽")
+metrics[4].metric("Загрузка флота", f"{display_result.utilization:.1%}")
 
 left, right = st.columns([1.2, 1])
 with left:
-    st.subheader("Сетка сети 10×10 и маршруты дронов")
+    st.subheader(f"Сетка сети 10×10 и маршруты дронов · seed {display_config.seed}")
     demand = {(x, y): 0 for x in range(10) for y in range(10)}
-    for order in result.orders:
+    for order in display_result.orders:
         demand[(order.point.x, order.point.y)] += 1
     fig = go.Figure()
     for x in range(10):
@@ -130,7 +138,7 @@ with left:
                 )
     route_colors = ["#38bdf8", "#a78bfa", "#f472b6", "#facc15", "#34d399"]
     shown_drones = set()
-    for index, mission in enumerate(result.timeline):
+    for index, mission in enumerate(display_result.timeline):
         route = mission["route"]
         fig.add_trace(
             go.Scatter(
@@ -146,13 +154,13 @@ with left:
         )
         shown_drones.add(mission["drone"])
     fig.add_trace(go.Scatter(
-        x=[config.depot.x], y=[config.depot.y], mode="markers+text",
+        x=[display_config.depot.x], y=[display_config.depot.y], mode="markers+text",
         text=["СКЛАД"], textposition="top center", name="Склад",
         marker=dict(size=18, color="#ef4444", symbol="diamond"),
         textfont=dict(color="#fecaca", size=11),
     ))
-    high_x = [point.x for point in result.high_demand_points]
-    high_y = [point.y for point in result.high_demand_points]
+    high_x = [point.x for point in display_result.high_demand_points]
+    high_y = [point.y for point in display_result.high_demand_points]
     fig.add_trace(go.Scatter(
         x=high_x, y=high_y, mode="markers", name="Точки λ=5",
         marker=dict(size=14, color="#fb923c", symbol="star"),
@@ -169,18 +177,22 @@ with left:
         )
     fig.update_layout(
         height=560, template="plotly_dark", paper_bgcolor="#0b1322", plot_bgcolor="#0b1322",
+        title=f"Фиксированный seed: {display_config.seed}",
         xaxis=dict(range=[-1, 9.6], showticklabels=False, title=None, gridcolor="#1f3552", zeroline=False),
         yaxis=dict(range=[-1, 9.6], showticklabels=False, title=None, gridcolor="#1f3552", zeroline=False, scaleanchor="x", scaleratio=1),
         legend_title="", margin=dict(l=45, r=20, t=20, b=38),
     )
     st.plotly_chart(fig, use_container_width=True)
 with right:
-    st.subheader("Динамика выполнения")
-    if result.timeline:
-        timeline = pd.DataFrame(result.timeline)
+    st.subheader(f"Динамика выполнения · seed {display_config.seed}")
+    if display_result.timeline:
+        timeline = pd.DataFrame(display_result.timeline)
         hourly = timeline.groupby("hour", as_index=False)["orders"].sum()
         chart = px.bar(hourly, x="hour", y="orders", labels={"hour": "Час суток", "orders": "Заказов"}, template="plotly_dark")
-        chart.update_layout(height=240, showlegend=False, paper_bgcolor="#0b1322", plot_bgcolor="#0b1322")
+        chart.update_layout(
+            height=240, showlegend=False, paper_bgcolor="#0b1322", plot_bgcolor="#0b1322",
+            title=f"Фиксированный seed: {display_config.seed}",
+        )
         st.plotly_chart(chart, use_container_width=True)
         st.dataframe(
             timeline[["drone", "hour", "orders", "distance_km", "duration_h"]].rename(
@@ -198,7 +210,8 @@ st.caption(
     "и 10 точек с интенсивностью 0,1 заказов/ч круглосуточно. Дрон строит маршрут склад → точки → склад."
 )
 st.info(
-    f"Среднее время доставки: {result.average_delivery_hours:.2f} ч • "
-    f"Рейсов: {sum(drone.missions for drone in result.drones)} • "
-    f"Осталось в очереди: {result.undelivered_count}"
+    f"Seed: {display_config.seed} • "
+    f"Среднее время доставки: {display_result.average_delivery_hours:.2f} ч • "
+    f"Рейсов: {sum(drone.missions for drone in display_result.drones)} • "
+    f"Осталось в очереди: {display_result.undelivered_count}"
 )
