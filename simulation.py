@@ -75,6 +75,57 @@ class SimulationResult:
         return self.generated_count - self.delivered_count
 
 
+def optimize_deliveries(
+    base_config: SimulationConfig,
+    max_drones: int,
+    max_speed_kmh: int,
+    max_capacity: int,
+) -> tuple[SimulationConfig, SimulationResult]:
+    """Find the configuration delivering the most orders within supplied limits."""
+    if min(max_drones, max_speed_kmh, max_capacity) < 1:
+        raise ValueError("Ограничения оптимизации должны быть положительными.")
+
+    best_config = SimulationConfig(
+        **{
+            **base_config.__dict__,
+            "drones": 1,
+            "speed_kmh": 1.0,
+            "capacity": 1,
+        }
+    )
+    best_result = run_simulation(best_config)
+    # При максимизации числа доставок большая скорость не ухудшает расписание,
+    # поэтому достаточно проверить заданную максимальную скорость.
+    for drone_count in range(1, max_drones + 1):
+        for capacity in range(1, max_capacity + 1):
+            candidate_config = SimulationConfig(
+                **{
+                    **base_config.__dict__,
+                    "drones": drone_count,
+                    "speed_kmh": float(max_speed_kmh),
+                    "capacity": capacity,
+                }
+            )
+            candidate_result = run_simulation(candidate_config)
+            score = (
+                candidate_result.delivered_count,
+                -candidate_result.total_distance_km,
+                -drone_count,
+                -max_speed_kmh,
+                -capacity,
+            )
+            best_score = (
+                best_result.delivered_count,
+                -best_result.total_distance_km,
+                -best_config.drones,
+                -best_config.speed_kmh,
+                -best_config.capacity,
+            )
+            if score > best_score:
+                best_config, best_result = candidate_config, candidate_result
+    return best_config, best_result
+
+
 def manhattan_distance(a: Point, b: Point) -> float:
     return float(abs(a.x - b.x) + abs(a.y - b.y))
 

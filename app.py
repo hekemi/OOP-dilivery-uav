@@ -7,7 +7,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
 
-from simulation import Point, SimulationConfig, run_simulation
+from simulation import Point, SimulationConfig, optimize_deliveries, run_simulation
 
 
 st.set_page_config(page_title="UAV Delivery Lab", page_icon="🚁", layout="wide")
@@ -56,6 +56,18 @@ with st.sidebar:
     depot_x = st.number_input("Склад X", 0, 9, 5)
     depot_y = st.number_input("Склад Y", 0, 9, 5)
 
+st.subheader("Оптимизация доставленных заказов")
+st.caption("Поиск лучшей конфигурации за сутки по количеству доставленных заказов.")
+opt_left, opt_mid, opt_right, opt_button = st.columns([1, 1, 1, 1.15])
+with opt_left:
+    optimization_drones = st.number_input("Макс. дронов", 1, 20, int(drones), key="optimization_drones")
+with opt_mid:
+    optimization_speed = st.number_input("Макс. скорость", 1, 80, int(speed), key="optimization_speed")
+with opt_right:
+    optimization_capacity = st.number_input("Макс. вместимость", 1, 30, int(capacity), key="optimization_capacity")
+with opt_button:
+    run_optimization = st.button("🚀 Найти максимум", type="primary", use_container_width=True)
+
 config = SimulationConfig(
     seed=st.session_state.simulation_seed,
     drones=drones,
@@ -68,6 +80,26 @@ config = SimulationConfig(
     depot=Point(int(depot_x), int(depot_y)),
 )
 result = run_simulation(config)
+
+if run_optimization:
+    with st.spinner("Перебираю конфигурации дронов..."):
+        optimized_config, optimized_result = optimize_deliveries(
+            config,
+            int(optimization_drones),
+            int(optimization_speed),
+            int(optimization_capacity),
+        )
+    st.session_state.optimized_config = optimized_config
+    st.session_state.optimized_result = optimized_result
+
+if "optimized_result" in st.session_state:
+    optimized_config = st.session_state.optimized_config
+    optimized_result = st.session_state.optimized_result
+    st.success(
+        f"Лучший результат: **{optimized_result.delivered_count} из {optimized_result.generated_count} заказов**. "
+        f"Дроны: **{optimized_config.drones}**, скорость: **{optimized_config.speed_kmh:.0f} км/ч**, "
+        f"вместимость: **{optimized_config.capacity}**."
+    )
 
 metrics = st.columns(5)
 metrics[0].metric("Доставлено", f"{result.delivered_count}")
