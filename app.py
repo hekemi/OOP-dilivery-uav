@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import random
+
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
@@ -35,7 +37,12 @@ st.markdown(
 
 with st.sidebar:
     st.header("Параметры эксперимента")
-    seed = st.number_input("Seed", min_value=0, value=42, step=1)
+    if "simulation_seed" not in st.session_state:
+        st.session_state.simulation_seed = random.SystemRandom().randint(0, 2**32 - 1)
+    if st.button("🔄 Новая симуляция", use_container_width=True, type="primary"):
+        st.session_state.simulation_seed = random.SystemRandom().randint(0, 2**32 - 1)
+        st.rerun()
+    st.caption("Нажмите кнопку, чтобы сгенерировать новый случайный сценарий заказов.")
     drones = st.slider("Количество дронов K", 1, 20, 2)
     capacity = st.slider("Вместимость N, заказов", 1, 30, 5)
     speed = st.slider("Скорость, км/ч", 1, 80, 10)
@@ -50,7 +57,7 @@ with st.sidebar:
     depot_y = st.number_input("Склад Y", 0, 9, 5)
 
 config = SimulationConfig(
-    seed=int(seed),
+    seed=st.session_state.simulation_seed,
     drones=drones,
     capacity=capacity,
     speed_kmh=float(speed),
