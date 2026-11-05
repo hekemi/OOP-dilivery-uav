@@ -78,8 +78,8 @@ class SimulationResult:
 def optimize_deliveries(
     base_config: SimulationConfig,
     max_drones: int = 20,
-    max_speed_kmh: int = 80,
-    max_capacity: int = 30,
+    max_speed_kmh: int = 40,
+    max_capacity: int = 10,
 ) -> tuple[SimulationConfig, SimulationResult]:
     """Find the configuration delivering the most orders within supplied limits."""
     if min(max_drones, max_speed_kmh, max_capacity) < 1:
