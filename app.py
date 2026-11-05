@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
 import streamlit as st
 
 from simulation import Point, SimulationConfig, run_simulation
@@ -11,9 +12,16 @@ st.set_page_config(page_title="UAV Delivery Lab", page_icon="🚁", layout="wide
 st.markdown(
     """
     <style>
-    .stApp { background: linear-gradient(135deg, #f8fbff 0%, #eef4ff 100%); }
-    [data-testid="stMetric"] { background: white; border: 1px solid #dce8f8; padding: 14px; border-radius: 14px; box-shadow: 0 4px 14px #183b5b0d; }
-    .hero { padding: 22px 28px; border-radius: 20px; background: linear-gradient(120deg,#12355b,#1d6fa5); color: white; margin-bottom: 20px; }
+    .stApp { background: radial-gradient(circle at top right, #172554 0%, #0b1120 45%, #070b14 100%); color: #e5eefb; }
+    [data-testid="stHeader"] { background: rgba(7, 11, 20, .8); }
+    [data-testid="stSidebar"] { background: #0d1627; border-right: 1px solid #263957; }
+    [data-testid="stMetric"] { background: #111d32; border: 1px solid #2b4163; padding: 14px; border-radius: 14px; box-shadow: 0 4px 14px #00000035; }
+    [data-testid="stMetricLabel"], [data-testid="stMetricValue"], [data-testid="stMetricDelta"] { color: #f1f5ff !important; }
+    [data-testid="stMetricLabel"] p { color: #a9bdd9 !important; }
+    .stMarkdown, .stCaption, label, .stText, p { color: #d7e3f5; }
+    h1, h2, h3 { color: #f8fbff !important; }
+    .stInfo, .stAlert { background: #12233b; color: #e5eefb; border-color: #315581; }
+    .hero { padding: 22px 28px; border-radius: 20px; background: linear-gradient(120deg,#172554,#075985); color: white; margin-bottom: 20px; border: 1px solid #2e6a9c; }
     .hero h1 { margin: 0; font-size: 2.3rem; } .hero p { opacity: .85; margin: 6px 0 0; }
     </style>
     """,
@@ -63,41 +71,60 @@ metrics[4].metric("Загрузка флота", f"{result.utilization:.1%}")
 
 left, right = st.columns([1.2, 1])
 with left:
-    st.subheader("Карта сети и спроса")
-    points = []
+    st.subheader("Сетка сети 10×10 и маршруты дронов")
+    demand = {(x, y): 0 for x in range(10) for y in range(10)}
     for order in result.orders:
-        points.append(
-            {
-                "x": order.point.x,
-                "y": order.point.y,
-                "Тип": "Доставлен" if order.delivered_at is not None else "Не доставлен",
-                "Размер": 1,
-            }
+        demand[(order.point.x, order.point.y)] += 1
+    fig = go.Figure()
+    for x in range(10):
+        for y in range(10):
+            fig.add_shape(
+                type="rect", x0=x - 0.48, y0=y - 0.48, x1=x + 0.48, y1=y + 0.48,
+                line=dict(color="#29415f", width=1), fillcolor="#0e1a2c",
+            )
+            if demand[(x, y)]:
+                fig.add_annotation(
+                    x=x, y=y, text=str(demand[(x, y)]), showarrow=False,
+                    font=dict(size=11, color="#e8f1ff"),
+                )
+    route_colors = ["#38bdf8", "#a78bfa", "#f472b6", "#facc15", "#34d399"]
+    for index, mission in enumerate(result.timeline):
+        route = mission["route"]
+        fig.add_trace(
+            go.Scatter(
+                x=[point[0] for point in route], y=[point[1] for point in route],
+                mode="lines+markers", name=mission["drone"],
+                line=dict(color=route_colors[index % len(route_colors)], width=2),
+                marker=dict(size=7),
+                hovertemplate=f"{mission['drone']}<extra></extra>",
+            )
         )
-    for point in result.high_demand_points:
-        points.append({"x": point.x, "y": point.y, "Тип": "Точка генерации (λ=5)", "Размер": 8})
-    points.append({"x": config.depot.x, "y": config.depot.y, "Тип": "Склад", "Размер": 14})
-    map_df = pd.DataFrame(points)
-    fig = px.scatter(
-        map_df,
-        x="x",
-        y="y",
-        color="Тип",
-        size="Размер",
-        hover_data={"x": True, "y": True, "Размер": False},
-        color_discrete_map={"Склад": "#e63946", "Точка генерации (λ=5)": "#f4a261", "Доставлен": "#2a9d8f", "Не доставлен": "#8d99ae"},
+    fig.add_trace(go.Scatter(
+        x=[config.depot.x], y=[config.depot.y], mode="markers+text",
+        text=["СКЛАД"], textposition="top center", name="Склад",
+        marker=dict(size=18, color="#ef4444", symbol="diamond"),
+        textfont=dict(color="#fecaca", size=11),
+    ))
+    high_x = [point.x for point in result.high_demand_points]
+    high_y = [point.y for point in result.high_demand_points]
+    fig.add_trace(go.Scatter(
+        x=high_x, y=high_y, mode="markers", name="Точки λ=5",
+        marker=dict(size=14, color="#fb923c", symbol="star"),
+    ))
+    fig.update_layout(
+        height=560, template="plotly_dark", paper_bgcolor="#0b1322", plot_bgcolor="#0b1322",
+        xaxis=dict(range=[-0.6, 9.6], dtick=1, title="X", gridcolor="#1f3552", zeroline=False),
+        yaxis=dict(range=[-0.6, 9.6], dtick=1, title="Y", gridcolor="#1f3552", zeroline=False, scaleanchor="x", scaleratio=1),
+        legend_title="", margin=dict(l=20, r=20, t=20, b=20),
     )
-    fig.update_layout(height=480, xaxis_title="Координата X", yaxis_title="Координата Y", legend_title="")
-    fig.update_yaxes(scaleanchor="x", scaleratio=1, dtick=1)
-    fig.update_xaxes(dtick=1)
     st.plotly_chart(fig, use_container_width=True)
 with right:
     st.subheader("Динамика выполнения")
     if result.timeline:
         timeline = pd.DataFrame(result.timeline)
         hourly = timeline.groupby("hour", as_index=False)["orders"].sum()
-        chart = px.bar(hourly, x="hour", y="orders", labels={"hour": "Час суток", "orders": "Заказов"})
-        chart.update_layout(height=240, showlegend=False)
+        chart = px.bar(hourly, x="hour", y="orders", labels={"hour": "Час суток", "orders": "Заказов"}, template="plotly_dark")
+        chart.update_layout(height=240, showlegend=False, paper_bgcolor="#0b1322", plot_bgcolor="#0b1322")
         st.plotly_chart(chart, use_container_width=True)
         st.dataframe(
             timeline[["drone", "hour", "orders", "distance_km", "duration_h"]].rename(

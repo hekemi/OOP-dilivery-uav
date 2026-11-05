@@ -133,6 +133,19 @@ def _mission_distance(depot: Point, orders: list[Order]) -> float:
     return distance + manhattan_distance(current, depot)
 
 
+def _mission_route(depot: Point, orders: list[Order]) -> list[Point]:
+    remaining = orders[:]
+    current = depot
+    route = [depot]
+    while remaining:
+        next_order = min(remaining, key=lambda order: manhattan_distance(current, order.point))
+        route.append(next_order.point)
+        current = next_order.point
+        remaining.remove(next_order)
+    route.append(depot)
+    return route
+
+
 def run_simulation(config: SimulationConfig) -> SimulationResult:
     if config.drones < 1 or config.capacity < 1 or config.speed_kmh <= 0:
         raise ValueError("Количество дронов и вместимость должны быть положительными, скорость — больше нуля.")
@@ -175,6 +188,7 @@ def run_simulation(config: SimulationConfig) -> SimulationResult:
             start = max(hour, drone.available_at)
             flight_hours = distance / config.speed_kmh
             finish = start + flight_hours + config.charge_hours
+            route = _mission_route(config.depot, batch)
             for order in batch:
                 order.delivered_at = finish
                 delivered.append(order)
@@ -191,6 +205,7 @@ def run_simulation(config: SimulationConfig) -> SimulationResult:
                     "distance_km": distance,
                     "duration_h": flight_hours,
                     "finish": finish,
+                    "route": [(point.x, point.y) for point in route],
                 }
             )
 
