@@ -125,11 +125,21 @@ with left:
         x=high_x, y=high_y, mode="markers", name="Точки λ=5",
         marker=dict(size=14, color="#fb923c", symbol="star"),
     ))
+    # Координаты вынесены за пределы клеток, чтобы не пересекаться с маршрутами.
+    for coordinate in range(10):
+        fig.add_annotation(
+            x=coordinate, y=-0.72, text=str(coordinate), showarrow=False,
+            font=dict(size=11, color="#d7e3f5"), xanchor="center", yanchor="top",
+        )
+        fig.add_annotation(
+            x=-0.72, y=coordinate, text=str(coordinate), showarrow=False,
+            font=dict(size=11, color="#d7e3f5"), xanchor="right", yanchor="middle",
+        )
     fig.update_layout(
         height=560, template="plotly_dark", paper_bgcolor="#0b1322", plot_bgcolor="#0b1322",
-        xaxis=dict(range=[-0.6, 9.6], dtick=1, title="X", gridcolor="#1f3552", zeroline=False),
-        yaxis=dict(range=[-0.6, 9.6], dtick=1, title="Y", gridcolor="#1f3552", zeroline=False, scaleanchor="x", scaleratio=1),
-        legend_title="", margin=dict(l=20, r=20, t=20, b=20),
+        xaxis=dict(range=[-1, 9.6], showticklabels=False, title=None, gridcolor="#1f3552", zeroline=False),
+        yaxis=dict(range=[-1, 9.6], showticklabels=False, title=None, gridcolor="#1f3552", zeroline=False, scaleanchor="x", scaleratio=1),
+        legend_title="", margin=dict(l=45, r=20, t=20, b=38),
     )
     st.plotly_chart(fig, use_container_width=True)
 with right:
