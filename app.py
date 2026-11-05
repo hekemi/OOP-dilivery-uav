@@ -80,6 +80,7 @@ with left:
         for y in range(10):
             fig.add_shape(
                 type="rect", x0=x - 0.48, y0=y - 0.48, x1=x + 0.48, y1=y + 0.48,
+                layer="below",
                 line=dict(color="#29415f", width=1), fillcolor="#0e1a2c",
             )
             if demand[(x, y)]:
@@ -88,17 +89,22 @@ with left:
                     font=dict(size=11, color="#e8f1ff"),
                 )
     route_colors = ["#38bdf8", "#a78bfa", "#f472b6", "#facc15", "#34d399"]
+    shown_drones = set()
     for index, mission in enumerate(result.timeline):
         route = mission["route"]
         fig.add_trace(
             go.Scatter(
                 x=[point[0] for point in route], y=[point[1] for point in route],
-                mode="lines+markers", name=mission["drone"],
-                line=dict(color=route_colors[index % len(route_colors)], width=2),
-                marker=dict(size=7),
+                mode="lines+markers",
+                name=mission["drone"],
+                legendgroup=mission["drone"],
+                showlegend=mission["drone"] not in shown_drones,
+                line=dict(color=route_colors[int(mission["drone"].split()[-1]) % len(route_colors)], width=4),
+                marker=dict(size=9, line=dict(color="#f8fbff", width=1)),
                 hovertemplate=f"{mission['drone']}<extra></extra>",
             )
         )
+        shown_drones.add(mission["drone"])
     fig.add_trace(go.Scatter(
         x=[config.depot.x], y=[config.depot.y], mode="markers+text",
         text=["СКЛАД"], textposition="top center", name="Склад",
