@@ -39,7 +39,7 @@ with st.sidebar:
     st.header("Параметры эксперимента")
     if "simulation_seed" not in st.session_state:
         st.session_state.simulation_seed = random.SystemRandom().randint(0, 2**32 - 1)
-    if st.button("🔄 Новая симуляция", use_container_width=True, type="primary"):
+    if st.button("Новая симуляция", use_container_width=True, type="primary"):
         st.session_state.simulation_seed = random.SystemRandom().randint(0, 2**32 - 1)
         st.rerun()
     st.caption("Нажмите кнопку, чтобы сгенерировать новый случайный сценарий заказов.")
