@@ -63,7 +63,8 @@ config = SimulationConfig(
 result = run_simulation(config)
 
 metrics = st.columns(5)
-metrics[0].metric("Доставлено", f"{result.delivered_count}", f"из {result.generated_count}")
+metrics[0].metric("Доставлено", f"{result.delivered_count}")
+metrics[0].caption(f"из {result.generated_count} сгенерированных заказов")
 metrics[1].metric("Процент доставки", f"{result.delivered_count / max(result.generated_count, 1):.1%}")
 metrics[2].metric("Пробег", f"{result.total_distance_km:.1f} км")
 metrics[3].metric("Прибыль", f"{result.total_profit:,.0f} ₽")
